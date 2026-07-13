@@ -116,6 +116,8 @@ Browser app controls:
 | `j` / `l` | Camera yaw left/right by 5 degrees |
 | `c` | Center camera |
 
+Hold a drive key to keep moving. Releasing the key sends `Stop`; the browser also refreshes the held movement command while the key is down so the robot's dead-man timer does not stop it prematurely.
+
 Browser buttons:
 
 | Button | Action |

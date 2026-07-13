@@ -714,6 +714,9 @@ INDEX_HTML = r"""<!doctype html>
       "d": "right", "arrowright": "right",
       "x": "stop", " ": "stop"
     };
+    let heldDriveKey = null;
+    let heldDriveAction = null;
+    let driveRepeatTimer = null;
 
     async function post(path, data = {}) {
       const res = await fetch(path, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(data) });
@@ -722,6 +725,30 @@ INDEX_HTML = r"""<!doctype html>
     async function drive(action) {
       const state = await post("/api/drive", {action});
       update(state);
+    }
+    function startDriveHold(key, action) {
+      if (action === "stop") {
+        stopDriveHold();
+        drive("stop");
+        return;
+      }
+      heldDriveKey = key;
+      heldDriveAction = action;
+      drive(action);
+      if (!driveRepeatTimer) {
+        driveRepeatTimer = window.setInterval(() => {
+          if (heldDriveAction) drive(heldDriveAction);
+        }, 200);
+      }
+    }
+    function stopDriveHold(key = null) {
+      if (key !== null && heldDriveKey !== key) return;
+      heldDriveKey = null;
+      heldDriveAction = null;
+      if (driveRepeatTimer) {
+        window.clearInterval(driveRepeatTimer);
+        driveRepeatTimer = null;
+      }
     }
     async function speed(delta) {
       const state = await post("/api/speed", {delta});
@@ -734,6 +761,7 @@ INDEX_HTML = r"""<!doctype html>
         if (!ok) return;
       }
       const state = await post("/api/drive_enabled", {enabled});
+      if (!state.drive_enabled) stopDriveHold();
       update(state);
     }
     async function setMode(mode) {
@@ -774,7 +802,7 @@ INDEX_HTML = r"""<!doctype html>
       if (["arrowup","arrowdown","arrowleft","arrowright"," "].includes(key)) event.preventDefault();
       if (active.has(key) && key !== " " && key !== "x") return;
       active.add(key);
-      if (driveMap[key]) drive(driveMap[key]);
+      if (driveMap[key]) startDriveHold(key, driveMap[key]);
       else if (key === "+" || key === "=") speed(10);
       else if (key === "-" || key === "_") speed(-10);
       else if (key === "i") camera("pitch", -5);
@@ -786,7 +814,10 @@ INDEX_HTML = r"""<!doctype html>
     document.addEventListener("keyup", (event) => {
       const key = event.key.toLowerCase();
       active.delete(key);
-      if (["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"].includes(key)) drive("stop");
+      if (["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"].includes(key)) {
+        stopDriveHold(key);
+        drive("stop");
+      }
     });
     setInterval(async () => {
       try {
