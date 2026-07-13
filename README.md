@@ -1,139 +1,231 @@
 # elegoo-robot
 
-Custom low-level firmware experiments for the ELEGOO Conqueror Robot Tank Kit.
+Tools and firmware experiments for the ELEGOO Conqueror Robot Tank Kit.
 
-The first target is the UNO R3 controller. The ESP32/FPV camera module is left stock until the UNO pin map and movement control are confirmed.
+The current workflow keeps the stock ESP32 camera/control firmware in place and connects to it directly from a Mac. This lets us stream video, log synchronized data, and eventually drive the robot while collecting datasets for monocular SLAM.
 
-## Layout
+## Current Capabilities
 
-```text
-docs/
-  hardware.md              Hardware assumptions and pin-mapping notes
-  protocol.md              Serial command protocol
-  esp32-camera-and-control.md
-                           ESP32 video/control protocol notes
-firmware/
-  uno/conqueror_serial/    Starter UNO firmware
-  esp32-cam/               Placeholder for later camera/Wi-Fi firmware
-vendor/elegoo/             Place downloaded ELEGOO product files here
-```
+- Connect to the ESP32 Wi-Fi access point.
+- Read the camera stream from `http://192.168.4.1:81/stream`.
+- Connect to the robot control socket at `192.168.4.1:100`.
+- Reply to stock `{Heartbeat}` messages.
+- Record synchronized video frames and control events.
+- Replay and inspect recorded sessions offline.
+- Optionally drive from the keyboard while recording.
 
-## Quick Start
+## Safety
 
-1. Download the official Conqueror product files from ELEGOO's Download Center:
-   `STEM Kits -> Robot Kits -> Conqueror Robot Tank Kit -> Product Files`.
-2. Put the downloaded archive or extracted files under `vendor/elegoo/`.
-3. The current `config.h` is already updated from ELEGOO's `TB6612/ConquerorCar_TB6612_20240605` source.
-4. Upload the starter firmware to the UNO.
-5. Bench-test with the tracks lifted.
+Default tools do not drive the robot. The browser app starts disarmed and asks for confirmation before enabling drive commands.
 
-## Arduino IDE
+Before arming drive:
 
-Open:
+1. Put the robot on the floor with clear space, or lift the tracks for bench testing.
+2. Connect the main battery if you expect the tracks to move.
+3. Keep a hand near the power switch.
+4. Start with a low speed, for example `--speed 80`.
 
-```text
-firmware/uno/conqueror_serial/conqueror_serial.ino
-```
+The browser and terminal teleop tools send stop commands when they exit and have dead-man stop timers while driving.
 
-Select:
+## Robot Network
 
-- Board: `Arduino Uno`
-- Port: the USB serial port for the robot
-
-Upload, then open Serial Monitor at `115200` baud.
-
-Try:
+Join the ESP32 Wi-Fi network from macOS:
 
 ```text
-{P}
-{M,80,80}
-{S}
+SSID: ELEGOO-<chipid>
+Password: blank
+Robot IP: 192.168.4.1
 ```
 
-Lift the robot so the tracks are off the ground for the first motor tests.
+Useful endpoints:
 
-## Arduino CLI
+```text
+Camera status:  http://192.168.4.1/status
+Single JPEG:    http://192.168.4.1/capture
+MJPEG stream:   http://192.168.4.1:81/stream
+Control socket: 192.168.4.1:100
+```
 
-`arduino-cli` is optional, but the repo has a Makefile for it:
+## Recommended First Run
+
+From the repo root:
 
 ```bash
-make compile
-make ports
-make upload PORT=/dev/tty.usbmodemXXXX
-make monitor PORT=/dev/tty.usbmodemXXXX
+cd /Users/arvind/code/elegoo-robot
 ```
 
-## PlatformIO
-
-`platformio.ini` is included for VS Code/PlatformIO users:
+Check video without driving:
 
 ```bash
-pio run
-pio run -t upload --upload-port /dev/tty.usbmodemXXXX
-pio device monitor -b 115200
+python3 tools/video_probe.py --duration 5
 ```
 
-## Video Probe
-
-After joining the `ELEGOO-*` Wi-Fi network, record a short no-driving camera sample:
+Check the control heartbeat without driving:
 
 ```bash
-python3 tools/video_probe.py --duration 10
+python3 tools/robot_probe.py --duration 6
 ```
 
-This reads `http://192.168.4.1:81/stream`, saves frames under `recordings/`, and writes frame timestamps to `frames.csv`.
-
-## Robot Control Probe
-
-After joining the `ELEGOO-*` Wi-Fi network, validate the stock control socket without driving:
-
-```bash
-python3 tools/robot_probe.py --duration 10
-```
-
-Default mode only replies to `{Heartbeat}`. It sends no movement commands and no UNO commands.
-
-## Session Recorder
-
-Record video frames and heartbeat/control events into one timestamped directory:
+Record a synchronized no-driving session:
 
 ```bash
 python3 tools/session_recorder.py --duration 10
 ```
 
-Default mode saves frames and replies to heartbeats. It does not send movement commands.
-
-## Offline Playback
-
-Inspect a recorded session without connecting to the robot:
+Inspect the newest recording:
 
 ```bash
-python3 tools/playback_session.py recordings/20260713T184923Z --validate-files
+python3 tools/playback_session.py recordings/<timestamp> --validate-files
 ```
 
-Replay the frame/control timeline as text:
+## Browser App
+
+Start the local browser app:
 
 ```bash
-python3 tools/playback_session.py recordings/20260713T184923Z --replay --speed 4
+scripts/run_web_teleop.sh
 ```
+
+This opens a local page at:
+
+```text
+http://127.0.0.1:8765/
+```
+
+The browser shows the robot camera stream. The local server records the same JPEG frames it forwards to the browser, so the session can be inspected later with `tools/playback_session.py`.
+
+The browser app starts with drive disarmed. Use the `Arm Drive` button in the UI to enable movement. A warning dialog asks you to confirm that the robot is in a safe place before movement is enabled.
+
+If you want a no-drive demo mode where the browser cannot arm driving at all:
+
+```bash
+scripts/run_web_teleop.sh --lock-drive
+```
+
+Browser app controls:
+
+| Key | Action |
+| --- | --- |
+| `w` or `↑` | Forward |
+| `s` or `↓` | Backward |
+| `a` or `←` | Turn left |
+| `d` or `→` | Turn right |
+| `space` or `x` | Stop |
+| `+` / `-` | Adjust speed |
+| `i` / `k` | Camera pitch up/down by 5 degrees |
+| `j` / `l` | Camera yaw left/right by 5 degrees |
+| `c` | Center camera |
+
+Browser buttons:
+
+| Button | Action |
+| --- | --- |
+| `Arm Drive` / `Disarm Drive` | Runtime drive enable/disable. Arming shows a safety confirmation dialog. |
+| `Stop` | Immediately send a stop command. This is fixed in the bottom control bar. |
+| `Manual` | Clear autonomous mode and return to keyboard/manual control. |
+| `Standby` | Send the stock stop/clear command. |
+| `Line` | Switch to line-tracking mode. Requires drive to be armed. |
+| `Obstacle` | Switch to obstacle-avoidance mode. Requires drive to be armed. |
+| `Follow` | Switch to follow mode. Requires drive to be armed. |
+| `Center Camera` | Return pitch/yaw to center. |
+| `Stop Server` | End the local app and write the session summary. This is fixed in the bottom control bar. |
 
 ## Teleop Recorder
 
-Record video and control events while using the keyboard:
+Start in safe mode first. This records video/control events and ignores drive keys:
 
 ```bash
 python3 tools/teleop_recorder.py
 ```
 
-Default mode records data and heartbeats but ignores drive keys. To actually send movement commands, lift the tracks or place the robot safely, connect the main battery, and run:
+Keys:
+
+| Key | Action |
+| --- | --- |
+| `w` | Forward |
+| `s` | Backward |
+| `a` | Turn left |
+| `d` | Turn right |
+| `q` | Right-forward diagonal |
+| `e` | Left-forward diagonal |
+| `space` or `x` | Stop |
+| `+` / `-` | Adjust speed |
+| `r` | Print status |
+| `Ctrl-C` | Stop and quit |
+
+In safe mode, drive keys are logged as ignored events. To actually drive and record:
 
 ```bash
 python3 tools/teleop_recorder.py --enable-drive --speed 80
 ```
 
-## Current Status
+Recordings are written to:
 
-- UNO serial tank-control scaffold exists.
-- Motor pins are confirmed from ELEGOO's 2024 TB6612 source.
-- Physical direction still needs a lifted-track bench test.
-- ESP32-CAM firmware is intentionally not modified yet.
+```text
+recordings/<timestamp>/
+  metadata.json
+  summary.json
+  frames.csv
+  control_events.csv
+  frames/
+    000000.jpg
+    000001.jpg
+```
+
+`recordings/` is ignored by Git.
+
+## Offline Playback
+
+Summarize a recorded session:
+
+```bash
+python3 tools/playback_session.py recordings/<timestamp> --validate-files
+```
+
+Replay the frame/control event timeline as text:
+
+```bash
+python3 tools/playback_session.py recordings/<timestamp> --replay --speed 4
+```
+
+The playback tool does not connect to the robot.
+
+## Tool Reference
+
+| Tool | Purpose | Sends movement commands |
+| --- | --- | --- |
+| `tools/video_probe.py` | Test and record the MJPEG stream | No |
+| `tools/robot_probe.py` | Test heartbeat/control socket | No |
+| `tools/session_recorder.py` | Record video plus heartbeat events | No |
+| `tools/playback_session.py` | Inspect recordings offline | No |
+| `tools/teleop_recorder.py` | Record while using keyboard controls | Only with `--enable-drive` |
+| `tools/web_teleop_app.py` | Browser video/control app with recording | Only after UI arming |
+
+## Firmware Notes
+
+The repo also contains a starter UNO firmware project:
+
+```text
+firmware/uno/conqueror_serial/
+```
+
+The motor pins are confirmed from ELEGOO's 2024 TB6612 source. We have not needed to replace the stock UNO firmware for the Mac-side video/control workflow.
+
+Compile the UNO sketch:
+
+```bash
+make compile
+```
+
+Upload only when you intentionally want to replace the current UNO firmware:
+
+```bash
+make upload PORT=/dev/cu.usbserial-XXXX
+```
+
+## Docs
+
+- `docs/esp32-camera-and-control.md`: ESP32 HTTP endpoints, TCP bridge, and JSON protocol.
+- `docs/mac-slam-client-plan.md`: phased plan for recording, calibration, teleop, and SLAM.
+- `docs/hardware.md`: confirmed pin mapping and hardware notes.
+- `docs/elegoo-source.md`: where the useful ELEGOO files live in the vendor archive.

@@ -73,6 +73,8 @@ Testing/
 .DS_Store
 .pio/
 .vscode/
+__pycache__/
+*/__pycache__/
 *.hex
 *.elf
 *.bin
