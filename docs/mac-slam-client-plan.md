@@ -208,6 +208,14 @@ monotonic_ns,command_json
 123456000,"{""N"":102,""D1"":1,""D2"":100}"
 ```
 
+Initial implementation:
+
+```bash
+python3 tools/session_recorder.py --duration 10
+```
+
+The recorder writes `frames.csv`, `control_events.csv`, `metadata.json`, and `summary.json` under `recordings/<timestamp>/`. Default mode only replies to ESP32 heartbeats and does not send movement commands.
+
 Validation:
 
 - A recording can be replayed offline without the robot.

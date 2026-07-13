@@ -93,6 +93,16 @@ python3 tools/robot_probe.py --duration 10
 
 Default mode only replies to `{Heartbeat}`. It sends no movement commands and no UNO commands.
 
+## Session Recorder
+
+Record video frames and heartbeat/control events into one timestamped directory:
+
+```bash
+python3 tools/session_recorder.py --duration 10
+```
+
+Default mode saves frames and replies to heartbeats. It does not send movement commands.
+
 ## Current Status
 
 - UNO serial tank-control scaffold exists.
