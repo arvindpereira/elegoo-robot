@@ -10,6 +10,8 @@ The first target is the UNO R3 controller. The ESP32/FPV camera module is left s
 docs/
   hardware.md              Hardware assumptions and pin-mapping notes
   protocol.md              Serial command protocol
+  esp32-camera-and-control.md
+                           ESP32 video/control protocol notes
 firmware/
   uno/conqueror_serial/    Starter UNO firmware
   esp32-cam/               Placeholder for later camera/Wi-Fi firmware
@@ -21,9 +23,9 @@ vendor/elegoo/             Place downloaded ELEGOO product files here
 1. Download the official Conqueror product files from ELEGOO's Download Center:
    `STEM Kits -> Robot Kits -> Conqueror Robot Tank Kit -> Product Files`.
 2. Put the downloaded archive or extracted files under `vendor/elegoo/`.
-3. Compare ELEGOO's `.ino` motor pin definitions against `firmware/uno/conqueror_serial/config.h`.
-4. Adjust `config.h` if needed.
-5. Upload the starter firmware to the UNO.
+3. The current `config.h` is already updated from ELEGOO's `TB6612/ConquerorCar_TB6612_20240605` source.
+4. Upload the starter firmware to the UNO.
+5. Bench-test with the tracks lifted.
 
 ## Arduino IDE
 
@@ -74,5 +76,6 @@ pio device monitor -b 115200
 ## Current Status
 
 - UNO serial tank-control scaffold exists.
-- Motor pins are placeholders until confirmed from ELEGOO's source or by bench testing.
+- Motor pins are confirmed from ELEGOO's 2024 TB6612 source.
+- Physical direction still needs a lifted-track bench test.
 - ESP32-CAM firmware is intentionally not modified yet.

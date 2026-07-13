@@ -3,7 +3,7 @@
 #include "config.h"
 
 CommandParser parser;
-MotorDriver motors(LEFT_MOTOR_PINS, RIGHT_MOTOR_PINS);
+MotorDriver motors(LEFT_MOTOR_PINS, RIGHT_MOTOR_PINS, MOTOR_STANDBY_PIN);
 
 uint32_t lastMotionCommandAt = 0;
 uint16_t commandTimeoutMs = DEFAULT_COMMAND_TIMEOUT_MS;
@@ -83,4 +83,3 @@ int16_t clampSpeed(int16_t value) {
 int16_t clampSignedSpeed(int16_t value) {
   return constrain(value, -255, 255);
 }
-

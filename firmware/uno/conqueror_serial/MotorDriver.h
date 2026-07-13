@@ -6,7 +6,7 @@
 
 class MotorDriver {
 public:
-  MotorDriver(const MotorPins& leftPins, const MotorPins& rightPins);
+  MotorDriver(const MotorPins& leftPins, const MotorPins& rightPins, uint8_t standbyPin);
 
   void begin();
   void drive(int16_t leftSpeed, int16_t rightSpeed);
@@ -15,9 +15,9 @@ public:
 private:
   MotorPins left;
   MotorPins right;
+  uint8_t standby;
 
   void driveOne(const MotorPins& pins, int16_t speed);
 };
 
 #endif
-
