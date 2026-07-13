@@ -103,6 +103,34 @@ python3 tools/session_recorder.py --duration 10
 
 Default mode saves frames and replies to heartbeats. It does not send movement commands.
 
+## Offline Playback
+
+Inspect a recorded session without connecting to the robot:
+
+```bash
+python3 tools/playback_session.py recordings/20260713T184923Z --validate-files
+```
+
+Replay the frame/control timeline as text:
+
+```bash
+python3 tools/playback_session.py recordings/20260713T184923Z --replay --speed 4
+```
+
+## Teleop Recorder
+
+Record video and control events while using the keyboard:
+
+```bash
+python3 tools/teleop_recorder.py
+```
+
+Default mode records data and heartbeats but ignores drive keys. To actually send movement commands, lift the tracks or place the robot safely, connect the main battery, and run:
+
+```bash
+python3 tools/teleop_recorder.py --enable-drive --speed 80
+```
+
 ## Current Status
 
 - UNO serial tank-control scaffold exists.

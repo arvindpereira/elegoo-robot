@@ -138,6 +138,15 @@ Notes:
 
 Combine TCP control and video preview.
 
+Initial implementation:
+
+```bash
+python3 tools/teleop_recorder.py
+python3 tools/teleop_recorder.py --enable-drive --speed 80
+```
+
+The default command records video/control events and ignores drive keys. Movement commands require `--enable-drive`.
+
 Deliverables:
 
 - Live camera preview.
@@ -225,6 +234,13 @@ Validation:
 ## Phase 5: Camera Calibration
 
 Monocular SLAM needs camera intrinsics.
+
+Before calibration, inspect recorded sessions offline:
+
+```bash
+python3 tools/playback_session.py recordings/<timestamp> --validate-files
+python3 tools/playback_session.py recordings/<timestamp> --replay --speed 4
+```
 
 Deliverables:
 
