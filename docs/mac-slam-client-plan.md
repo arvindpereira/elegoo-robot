@@ -303,14 +303,15 @@ Build `tools/robot_probe`, a command-line probe that:
 
 1. Connects to `192.168.4.1:100`.
 2. Replies to `{Heartbeat}`.
-3. Sends `{"N":100}` on startup.
-4. Accepts simple keyboard or terminal commands:
+3. Sends no movement commands in default mode.
+4. Optionally sends `{"N":100}` only when explicitly run with a stop/clear flag.
+5. Later accepts simple keyboard or terminal commands:
    - `w`: forward
    - `s`: backward
    - `a`: left
    - `d`: right
    - space or `x`: stop
    - `q`: stop and quit
-5. Logs all sent and received messages.
+6. Logs all sent and received messages.
 
 After that, build `tools/video_probe` for the MJPEG stream.

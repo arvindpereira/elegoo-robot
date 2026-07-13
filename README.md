@@ -83,6 +83,16 @@ python3 tools/video_probe.py --duration 10
 
 This reads `http://192.168.4.1:81/stream`, saves frames under `recordings/`, and writes frame timestamps to `frames.csv`.
 
+## Robot Control Probe
+
+After joining the `ELEGOO-*` Wi-Fi network, validate the stock control socket without driving:
+
+```bash
+python3 tools/robot_probe.py --duration 10
+```
+
+Default mode only replies to `{Heartbeat}`. It sends no movement commands and no UNO commands.
+
 ## Current Status
 
 - UNO serial tank-control scaffold exists.
