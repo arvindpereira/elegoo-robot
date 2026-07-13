@@ -73,6 +73,16 @@ pio run -t upload --upload-port /dev/tty.usbmodemXXXX
 pio device monitor -b 115200
 ```
 
+## Video Probe
+
+After joining the `ELEGOO-*` Wi-Fi network, record a short no-driving camera sample:
+
+```bash
+python3 tools/video_probe.py --duration 10
+```
+
+This reads `http://192.168.4.1:81/stream`, saves frames under `recordings/`, and writes frame timestamps to `frames.csv`.
+
 ## Current Status
 
 - UNO serial tank-control scaffold exists.

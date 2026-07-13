@@ -80,3 +80,6 @@ Testing/
 # Keep downloaded vendor archives local.
 vendor/elegoo/*
 !vendor/elegoo/README.md
+
+# Local robot/video captures.
+recordings/

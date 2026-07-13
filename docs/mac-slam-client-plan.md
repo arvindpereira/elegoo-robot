@@ -120,6 +120,14 @@ Validation:
 - Dropped/invalid JPEG frames are counted, not fatal.
 - Timestamps are monotonic using local receive time.
 
+Initial implementation:
+
+```bash
+python3 tools/video_probe.py --duration 10
+```
+
+The tool does not open the robot control socket and does not send drive commands.
+
 Notes:
 
 - The ESP32 stream is MJPEG, not a low-latency robotics camera protocol.
@@ -306,4 +314,3 @@ Build `tools/robot_probe`, a command-line probe that:
 5. Logs all sent and received messages.
 
 After that, build `tools/video_probe` for the MJPEG stream.
-
