@@ -92,7 +92,7 @@ This opens a local page at:
 http://127.0.0.1:8765/
 ```
 
-The browser shows the robot camera stream. The local server records the same JPEG frames it forwards to the browser, so the session can be inspected later with `tools/playback_session.py`.
+The browser shows the robot camera stream. By default, the local server records the same JPEG frames it forwards to the browser, so the session can be inspected later with `tools/playback_session.py`.
 
 The browser app starts with drive disarmed. Use the `Arm Drive` button in the UI to enable movement. A warning dialog asks you to confirm that the robot is in a safe place before movement is enabled.
 
@@ -122,6 +122,7 @@ Browser buttons:
 
 | Button | Action |
 | --- | --- |
+| `Pause Recording` / `Resume Recording` | Toggle writing camera frames to `frames/` and `frames.csv`. The video stream and controls stay live while recording is paused, and the UI shows a red warning state. |
 | `Arm Drive` / `Disarm Drive` | Runtime drive enable/disable. Arming shows a safety confirmation dialog. |
 | `Stop` | Immediately send a stop command. This is fixed in the bottom control bar. |
 | `Manual` | Clear autonomous mode and return to keyboard/manual control. |

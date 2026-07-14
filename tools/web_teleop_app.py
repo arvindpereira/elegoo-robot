@@ -83,6 +83,8 @@ class AppState:
   mode: str = "manual"
   pitch: int = 90
   yaw: int = 90
+  recording_enabled: bool = True
+  frames_seen: int = 0
   frames: int = 0
   heartbeats_received: int = 0
   heartbeats_sent: int = 0
@@ -343,6 +345,7 @@ class WebApp:
         "deadman_ms": self.state.deadman_ms,
         "camera_pitch_initial": self.state.pitch,
         "camera_yaw_initial": self.state.yaw,
+        "recording_enabled_initial": self.state.recording_enabled,
         "camera_status": status,
     }
     (self.state.output_dir / "metadata.json").write_text(
@@ -393,6 +396,9 @@ class WebApp:
         "ended_monotonic_ns": ended,
         "elapsed_s": f"{(ended - self.state.started_monotonic_ns) / 1_000_000_000:.2f}",
         "frames": self.state.frames,
+        "frames_recorded": self.state.frames,
+        "frames_seen": self.state.frames_seen,
+        "recording_enabled": self.state.recording_enabled,
         "drive_allowed": self.state.drive_allowed,
         "drive_enabled": self.state.drive_enabled,
         "mode": self.state.mode,
@@ -479,6 +485,10 @@ def make_handler(app: WebApp):
         enabled = bool(data.get("enabled", False))
         ok = app.control.set_drive_enabled(enabled)
         self._send_json({"ok": ok, **current_state(app.state)})
+      elif parsed.path == "/api/recording":
+        app.state.recording_enabled = bool(data.get("enabled", True))
+        app.control._log("recording_enabled", str(app.state.recording_enabled).lower())
+        self._send_json({"ok": True, **current_state(app.state)})
       elif parsed.path == "/api/mode":
         mode = str(data.get("mode", "manual"))
         ok = app.control.set_mode(mode)
@@ -545,22 +555,25 @@ def make_handler(app: WebApp):
           for frame in iter_jpegs(response, app.args.chunk_size, app.stop_event):
             if app.stop_event.is_set():
               break
-            frame_id = app.state.frames
+            stream_frame_id = app.state.frames_seen
+            app.state.frames_seen += 1
             width, height = jpeg_dimensions(frame)
-            filename = f"frames/{frame_id:06d}.jpg"
-            (app.state.frames_dir / f"{frame_id:06d}.jpg").write_bytes(frame)
-            now_ns = time.monotonic_ns()
-            app.state.frames_writer.writerow({
-                "frame_id": frame_id,
-                "monotonic_ns": now_ns,
-                "filename": filename,
-                "width": width if width is not None else "",
-                "height": height if height is not None else "",
-                "byte_count": len(frame),
-                "decode_ok": str(width is not None and height is not None).lower(),
-            })
-            app.state.frames_csv.flush()
-            app.state.frames += 1
+            if app.state.recording_enabled:
+              recorded_frame_id = app.state.frames
+              filename = f"frames/{recorded_frame_id:06d}.jpg"
+              (app.state.frames_dir / f"{recorded_frame_id:06d}.jpg").write_bytes(frame)
+              now_ns = time.monotonic_ns()
+              app.state.frames_writer.writerow({
+                  "frame_id": recorded_frame_id,
+                  "monotonic_ns": now_ns,
+                  "filename": filename,
+                  "width": width if width is not None else "",
+                  "height": height if height is not None else "",
+                  "byte_count": len(frame),
+                  "decode_ok": str(width is not None and height is not None).lower(),
+              })
+              app.state.frames_csv.flush()
+              app.state.frames += 1
             app.state.last_frame_width = width or 0
             app.state.last_frame_height = height or 0
 
@@ -568,7 +581,7 @@ def make_handler(app: WebApp):
                 f"--{BOUNDARY}\r\n"
                 "Content-Type: image/jpeg\r\n"
                 f"Content-Length: {len(frame)}\r\n"
-                f"X-Frame-Id: {frame_id}\r\n"
+                f"X-Frame-Id: {stream_frame_id}\r\n"
                 "\r\n"
             ).encode("ascii")
             self.wfile.write(header)
@@ -596,6 +609,9 @@ def current_state(state: AppState) -> dict[str, object]:
       "pitch": state.pitch,
       "yaw": state.yaw,
       "frames": state.frames,
+      "frames_recorded": state.frames,
+      "frames_seen": state.frames_seen,
+      "recording_enabled": state.recording_enabled,
       "video_clients": state.video_clients,
       "control_status": state.control_status,
       "heartbeats_received": state.heartbeats_received,
@@ -640,6 +656,8 @@ INDEX_HTML = r"""<!doctype html>
     .bad { color: #ff8a8a; }
     button { width: 100%; padding: 7px 8px; border-radius: 6px; border: 1px solid #46515d; background: #242b33; color: #fff; font: inherit; font-size: 12px; }
     button.primary { background: #28415d; border-color: #4d6f93; }
+    button.recording-on { background: #214f38; border-color: #3f8d62; }
+    button.recording-off { background: #5a282c; border-color: #9a4a54; }
     button.danger { background: #4a2529; border-color: #7c3c45; }
     button:disabled { opacity: 0.45; }
     #message { min-height: 16px; margin: 8px 0 0; font-size: 11px; overflow-wrap: anywhere; }
@@ -658,10 +676,11 @@ INDEX_HTML = r"""<!doctype html>
           <div class="metric"><span>Drive</span><span id="drive" class="warn">checking</span></div>
           <div class="metric"><span>Control</span><span id="control">checking</span></div>
           <div class="metric"><span>Mode</span><span id="mode">manual</span></div>
-          <div class="metric"><span>Frames</span><span id="frames">0</span></div>
+          <div class="metric"><span>Rec</span><span id="recordingState" class="ok">recording</span></div>
           <div class="metric"><span>Speed</span><span id="speed">0</span></div>
           <div class="metric"><span>Camera</span><span><span id="pitch">90</span>/<span id="yaw">90</span></span></div>
-          <div class="metric wide"><span>Recording</span><span id="recording"></span></div>
+          <div class="metric wide"><span>Frames saved / seen</span><span id="frames">0 / 0</span></div>
+          <div class="metric wide"><span>Folder</span><span id="recording"></span></div>
         </div>
 
         <h2>Drive</h2>
@@ -695,6 +714,9 @@ INDEX_HTML = r"""<!doctype html>
         <p id="message" class="warn"></p>
       </div>
       <div class="footer">
+        <div class="buttons">
+          <button id="recordingToggle" class="recording-on" onclick="toggleRecording()">Pause Recording</button>
+        </div>
         <div class="buttons">
           <button id="driveToggle" class="primary" onclick="toggleDrive()">Arm Drive</button>
           <button class="danger" onclick="drive('stop')">Stop</button>
@@ -764,6 +786,11 @@ INDEX_HTML = r"""<!doctype html>
       if (!state.drive_enabled) stopDriveHold();
       update(state);
     }
+    async function toggleRecording() {
+      const enabled = document.getElementById("recordingToggle").dataset.enabled !== "true";
+      const state = await post("/api/recording", {enabled});
+      update(state);
+    }
     async function setMode(mode) {
       const state = await post("/api/mode", {mode});
       update(state);
@@ -790,7 +817,14 @@ INDEX_HTML = r"""<!doctype html>
       document.getElementById("control").className = state.control_status === "connected" ? "ok" : "bad";
       document.getElementById("driveToggle").textContent = state.drive_enabled ? "Disarm Drive" : "Arm Drive";
       document.getElementById("driveToggle").disabled = !state.drive_allowed;
-      document.getElementById("frames").textContent = state.frames;
+      const recordingState = document.getElementById("recordingState");
+      recordingState.innerHTML = state.recording_enabled ? "recording" : "&#9888; paused";
+      recordingState.className = state.recording_enabled ? "ok" : "bad";
+      const recordingToggle = document.getElementById("recordingToggle");
+      recordingToggle.textContent = state.recording_enabled ? "Pause Recording" : "Resume Recording";
+      recordingToggle.dataset.enabled = state.recording_enabled ? "true" : "false";
+      recordingToggle.className = state.recording_enabled ? "recording-on" : "recording-off";
+      document.getElementById("frames").textContent = `${state.frames_recorded} / ${state.frames_seen}`;
       document.getElementById("speed").textContent = state.speed;
       document.getElementById("pitch").textContent = state.pitch;
       document.getElementById("yaw").textContent = state.yaw;
